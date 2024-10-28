@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Überleben in der Wildnis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #228B22;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #game-day-time {
+            margin-top: 10px;
+        }
+
+        section {
+            padding: 20px;
+        }
+
+        #status, #inventory, #action-buttons, #progress-container, #messages {
+            margin: 20px auto;
+            max-width: 600px;
+            background-color: white;
+            border: 2px solid #228B22;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        #inventory ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #inventory li {
+            padding: 5px 0;
+        }
+
+        #action-buttons button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 10px;
+            background-color: #32CD32;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #action-buttons button:hover {
+            background-color: #228B22;
+        }
+
+        #progress-container {
+            background-color: #d3d3d3;
+            border-radius: 5px;
+            padding: 10px;
+            position: relative;
+        }
+
+        #progress-fill {
+            background-color: #32CD32;
+            height: 20px;
+            width: 0%;
+            border-radius: 5px;
+        }
+
+        #notification {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #ffcc00;
+            padding: 15px;
+            border: 2px solid #cc9900;
+            border-radius: 5px;
+            z-index: 1000;
+            display: none;
+        }
+
+        #messages p {
+            border-bottom: 1px solid #ccc;
+            padding: 5px 0;
+        }
+
+        #messages button {
+            padding: 10px 20px;
+            background-color: #32CD32;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #messages button:hover {
+            background-color: #228B22;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>Überleben in der Wildnis</h1>
+        <div id="game-day-time">
+            Tag <span id="day">1</span>, Uhrzeit: <span id="time">06:00</span>
+        </div>
+    </header>
+
+    <!-- Statusanzeige -->
+    <section id="status">
+        <p>Gesundheit: <span id="health">100</span></p>
+        <p>Energie: <span id="energy">100</span></p>
+        <p>Wasser: <span id="water">100</span></p>
+        <p>Unterkunft: <span id="shelter">Keine</span></p>
+    </section>
+
+    <!-- Inventaranzeige -->
+    <section id="inventory">
+        <h2>Inventar</h2>
+        <ul>
+            <li>Holz: <span id="wood">0</span></li>
+            <li>Stein: <span id="stone">0</span></li>
+            <li>Metall: <span id="metal">0</span></li>
+            <li>Getreide: <span id="grain">0</span></li>
+            <li>Brot: <span id="bread">0</span></li>
+            <li>Fleisch: <span id="meat">0</span></li>
+            <li>Werkzeug: <span id="tool">Kein</span></li>
+            <li>Feld: <span id="field">Kein</span></li>
+            <li>Gehege: <span id="pen">Kein</span></li>
+            <li>Tiere: <span id="animals">0</span></li>
+        </ul>
+    </section>
+
+    <!-- Aktionsbuttons -->
+    <section id="action-buttons">
+        <h2>Aktionen</h2>
+        <button data-action="holz-faellen">Holz fällen</button>
+        <button data-action="stein-abbauen">Stein abbauen</button>
+        <button data-action="metall-abbauen">Metall abbauen</button>
+        <button data-action="nahrung-suchen">Nahrung suchen</button>
+        <button data-action="feld-bauen-verbessern">Feld bauen/verbessern</button>
+        <button data-action="getreide-ernten">Getreide ernten</button>
+        <button data-action="brot-backen">Brot backen</button>
+        <button data-action="gehege-bauen-verbessern">Gehege bauen/verbessern</button>
+        <button data-action="tiere-versorgen">Tiere versorgen</button>
+        <button data-action="wasser-suchen">Wasser suchen</button>
+        <button data-action="unterkunft-bauen-verbessern">Unterkunft bauen/verbessern</button>
+        <button data-action="umgebung-erkunden">Umgebung erkunden</button>
+        <button data-action="nickerchen-machen">Nickerchen machen</button>
+        <button data-action="bauplaene-ansehen">Baupläne ansehen</button>
+        <button data-action="optionen">Optionen</button>
+        <button data-action="werkzeug-herstellen">Werkzeug herstellen</button>
+        <button data-action="essen">Essen</button>
+    </section>
+
+    <!-- Fortschrittsbalken -->
+    <section id="progress-container" style="display: none;">
+        <div id="progress-fill"></div>
+        <p>Aktivität: <span id="activity-name"></span></p>
+        <p>Verbleibende Zeit: <span id="remaining-time"></span></p>
+        <button id="cancel-activity-button">Abbrechen</button>
+    </section>
+
+    <!-- Benachrichtigungsbereich -->
+    <div id="notification"></div>
+
+    <!-- Nachrichtenbereich -->
+    <section id="messages"></section>
+
+    <!-- JavaScript -->
+    <script>
+        // Spielzustand
+        let gameState = {
+            gesundheit: 100,
+            energie: 100,
+            wasser: 100,
+            tag: 1,
+            uhrzeit: 6,
+            aktivitaet: null,
+            aktivitaetEndzeit: null,
+            aktivitaetTimer: null,
+            aktivitaetAbgebrochen: false,
+            erkundungen: 0,
+            inventar: {
+                holz: 0,
+                stein: 0,
+                metall: 0,
+                getreide: 0,
+                brot: 0,
+                fleisch: 0,
+                werkzeug: null,
+                feld: null,
+                gehege: null,
+                tiere: 0,
+            },
+            gefährte: false,
+            unterkunft: null,
+        };
+
+        // DOM-Elemente
+        const healthElem = document.getElementById('health');
+        const energyElem = document.getElementById('energy');
+        const waterElem = document.getElementById('water');
+        const dayElem = document.getElementById('day');
+        const timeElem = document.getElementById('time');
+        const shelterElem = document.getElementById('shelter');
+        const woodElem = document.getElementById('wood');
+        const stoneElem = document.getElementById('stone');
+        const metalElem = document.getElementById('metal');
+        const grainElem = document.getElementById('grain');
+        const breadElem = document.getElementById('bread');
+        const meatElem = document.getElementById('meat');
+        const toolElem = document.getElementById('tool');
+        const fieldElem = document.getElementById('field');
+        const penElem = document.getElementById('pen');
+        const animalsElem = document.getElementById('animals');
+        const progressContainerElem = document.getElementById('progress-container');
+        const progressFillElem = document.getElementById('progress-fill');
+        const activityNameElem = document.getElementById('activity-name');
+        const remainingTimeElem = document.getElementById('remaining-time');
+        const cancelActivityButton = document.getElementById('cancel-activity-button');
+        const messagesElem = document.getElementById('messages');
+        const actionButtons = document.querySelectorAll('#action-buttons button');
+        const notificationElem = document.getElementById('notification');
+
+        // Initialisierung
+        function initializeGame() {
+            updateStatus();
+            updateInventory();
+            bindActionButtons();
+            setInterval(checkTime, 1000); // Überprüft die Zeit jede Sekunde
+        }
+
+        function updateStatus() {
+            healthElem.textContent = Math.floor(gameState.gesundheit);
+            energyElem.textContent = Math.floor(gameState.energie);
+            waterElem.textContent = Math.floor(gameState.wasser);
+            dayElem.textContent = gameState.tag;
+            let stunde = Math.floor(gameState.uhrzeit);
+            let minute = (gameState.uhrzeit % 1) * 60;
+            minute = minute === 0 ? '00' : '30';
+            timeElem.textContent = `${stunde}:${minute}`;
+            shelterElem.textContent = gameState.unterkunft ? gameState.unterkunft : 'Keine';
+        }
+
+        function updateInventory() {
+            woodElem.textContent = gameState.inventar.holz;
+            stoneElem.textContent = gameState.inventar.stein;
+            metalElem.textContent = gameState.inventar.metall;
+            grainElem.textContent = gameState.inventar.getreide;
+            breadElem.textContent = gameState.inventar.brot;
+            meatElem.textContent = gameState.inventar.fleisch;
+            toolElem.textContent = gameState.inventar.werkzeug ? gameState.inventar.werkzeug : 'Kein';
+            fieldElem.textContent = gameState.inventar.feld ? gameState.inventar.feld : 'Kein';
+            penElem.textContent = gameState.inventar.gehege ? gameState.inventar.gehege : 'Kein';
+            animalsElem.textContent = gameState.inventar.tiere;
+        }
+
+        function bindActionButtons() {
+            actionButtons.forEach(button => {
+                button.addEventListener('click', handleAction);
+            });
+            cancelActivityButton.addEventListener('click', cancelActivity);
+        }
+
+        function handleAction(event) {
+            const action = event.target.dataset.action;
+            if (gameState.aktivitaet && action !== 'essen') {
+                addMessage('Du führst bereits eine Aktivität aus.');
+                return;
+            }
+            switch(action) {
+                case 'holz-faellen':
+                    startActivity('Holz fällen', 15 * 60, 'holz-faellen');
+                    break;
+                case 'stein-abbauen':
+                    startActivity('Stein abbauen', 20 * 60, 'stein-abbauen');
+                    break;
+                case 'metall-abbauen':
+                    startActivity('Metall abbauen', 30 * 60, 'metall-abbauen');
+                    break;
+                case 'nahrung-suchen':
+                    startActivity('Nahrung suchen', 10 * 60, 'nahrung-suchen');
+                    break;
+                case 'feld-bauen-verbessern':
+                    buildOrUpgradeField();
+                    break;
+                case 'getreide-ernten':
+                    startActivity('Getreide ernten', 10 * 60, 'getreide-ernten');
+                    break;
+                case 'brot-backen':
+                    startActivity('Brot backen', 15 * 60, 'brot-backen');
+                    break;
+                case 'gehege-bauen-verbessern':
+                    buildOrUpgradePen();
+                    break;
+                case 'tiere-versorgen':
+                    manageAnimals();
+                    break;
+                case 'wasser-suchen':
+                    startActivity('Wasser suchen', 10 * 60, 'wasser-suchen');
+                    break;
+                case 'unterkunft-bauen-verbessern':
+                    buildOrUpgradeShelter();
+                    break;
+                case 'umgebung-erkunden':
+                    explore();
+                    break;
+                case 'nickerchen-machen':
+                    takeNap();
+                    break;
+                case 'bauplaene-ansehen':
+                    showBlueprints();
+                    break;
+                case 'optionen':
+                    showOptions();
+                    break;
+                case 'werkzeug-herstellen':
+                    craftTool();
+                    break;
+                case 'essen':
+                    eatFood();
+                    break;
+                default:
+                    addMessage('Diese Aktion ist nicht verfügbar.');
+            }
+        }
+
+        function startActivity(name, durationInSeconds, actionKey) {
+            // Überprüfen, ob genügend Zeit bis zur Schlafenszeit ist
+            if (gameState.uhrzeit >= 21 || gameState.uhrzeit + durationInSeconds / 3600 > 21) {
+                addMessage('Es ist zu spät für diese Aktivität.');
+                return;
+            }
+            gameState.aktivitaet = actionKey;
+            gameState.aktivitaetName = name;
+            gameState.aktivitaetEndzeit = Date.now() + durationInSeconds * 1000;
+            gameState.aktivitaetDauer = durationInSeconds;
+            gameState.aktivitaetStartzeit = Date.now();
+            gameState.aktivitaetAbgebrochen = false;
+            progressContainerElem.style.display = 'block';
+            activityNameElem.textContent = name;
+            updateActivityProgress();
+            gameState.aktivitaetTimer = setInterval(() => {
+                updateActivityProgress();
+            }, 1000);
+        }
+
+        function updateActivityProgress() {
+            const now = Date.now();
+            const remainingDuration = (gameState.aktivitaetEndzeit - now) / 1000;
+            const elapsed = gameState.aktivitaetDauer - remainingDuration;
+            const progressPercent = Math.min((elapsed / gameState.aktivitaetDauer) * 100, 100);
+            progressFillElem.style.width = `${progressPercent}%`;
+            remainingTimeElem.textContent = `${Math.ceil(remainingDuration)}s`;
+
+            // Ressourcenverbrauch
+            consumeResources(gameState.aktivitaet, 1);
+
+            // Zeit fortschreiten
+            advanceTime(1 / 3600); // 1 Sekunde in Stunden umrechnen
+
+            if (remainingDuration <= 0) {
+                clearInterval(gameState.aktivitaetTimer);
+                finishActivity(1); // Fortschritt 100%
+            }
+        }
+
+        function finishActivity(progressFraction) {
+            addMessage(`Aktivität '${gameState.aktivitaetName}' abgeschlossen!`);
+            processActivityResult(progressFraction);
+            gameState.aktivitaet = null;
+            progressContainerElem.style.display = 'none';
+            updateInventory();
+            updateStatus();
+            checkEndConditions();
+        }
+
+        function cancelActivity() {
+            if (gameState.aktivitaet) {
+                clearInterval(gameState.aktivitaetTimer);
+                const now = Date.now();
+                const elapsed = (now - gameState.aktivitaetStartzeit) / 1000;
+                const progressFraction = elapsed / gameState.aktivitaetDauer;
+                addMessage(`Du hast die Aktivität '${gameState.aktivitaetName}' abgebrochen.`);
+                processActivityResult(progressFraction);
+                gameState.aktivitaet = null;
+                progressContainerElem.style.display = 'none';
+                updateInventory();
+                updateStatus();
+                checkEndConditions();
+            }
+        }
+
+        function processActivityResult(progressFraction) {
+            switch(gameState.aktivitaet) {
+                case 'holz-faellen':
+                    const holzMenge = Math.floor(5 * progressFraction);
+                    gameState.inventar.holz += holzMenge;
+                    addMessage(`Du hast ${holzMenge} Holz gesammelt.`);
+                    break;
+                case 'stein-abbauen':
+                    const steinMenge = Math.floor(4 * progressFraction);
+                    gameState.inventar.stein += steinMenge;
+                    addMessage(`Du hast ${steinMenge} Stein gesammelt.`);
+                    break;
+                case 'metall-abbauen':
+                    const metallMenge = Math.floor(3 * progressFraction);
+                    gameState.inventar.metall += metallMenge;
+                    addMessage(`Du hast ${metallMenge} Metall gesammelt.`);
+                    break;
+                case 'nahrung-suchen':
+                    const nahrungMenge = Math.floor(3 * progressFraction);
+                    gameState.energie = Math.min(gameState.energie + nahrungMenge * 5, 100);
+                    addMessage(`Du hast Beeren gesammelt und gewinnst ${nahrungMenge * 5} Energie.`);
+                    break;
+                case 'getreide-ernten':
+                    if (gameState.inventar.feld) {
+                        const getreideMenge = Math.floor(10 * progressFraction);
+                        gameState.inventar.getreide += getreideMenge;
+                        addMessage(`Du hast ${getreideMenge} Getreide geerntet.`);
+                    } else {
+                        addMessage('Du hast kein Feld zum Ernten.');
+                    }
+                    break;
+                case 'brot-backen':
+                    const benoetigtesGetreide = Math.floor(5 * progressFraction);
+                    if (gameState.inventar.getreide >= benoetigtesGetreide) {
+                        gameState.inventar.getreide -= benoetigtesGetreide;
+                        const brotMenge = Math.floor(2 * progressFraction);
+                        gameState.inventar.brot += brotMenge;
+                        addMessage(`Du hast ${brotMenge} Brot gebacken.`);
+                    } else {
+                        addMessage('Nicht genügend Getreide zum Backen.');
+                    }
+                    break;
+                case 'wasser-suchen':
+                    const wasserMenge = Math.floor(30 * progressFraction);
+                    gameState.wasser = Math.min(gameState.wasser + wasserMenge, 100);
+                    addMessage(`Du hast ${wasserMenge} Wasser gefunden.`);
+                    break;
+                case 'umgebung-erkunden':
+                    handleExploration(progressFraction);
+                    break;
+                default:
+                    addMessage('Aktivität nicht erkannt.');
+            }
+        }
+
+        function consumeResources(actionKey, seconds) {
+            let energieVerbrauch = 0;
+            let wasserVerbrauch = 0;
+            let multiplikator = (gameState.uhrzeit >= 21 || gameState.uhrzeit < 6) ? 1.2 : 1;
+
+            // Werkzeug-Effektivität berücksichtigen
+            let werkzeugEffizienz = 1;
+            if (gameState.inventar.werkzeug) {
+                switch (gameState.inventar.werkzeug) {
+                    case 'Einfaches Werkzeug':
+                        werkzeugEffizienz = 0.9;
+                        break;
+                    case 'Fortgeschrittenes Werkzeug':
+                        werkzeugEffizienz = 0.75;
+                        break;
+                    case 'Hochwertiges Werkzeug':
+                        werkzeugEffizienz = 0.6;
+                        break;
+                }
+            }
+
+            switch(actionKey) {
+                case 'holz-faellen':
+                    energieVerbrauch = (5 / (15 * 60)) * seconds * multiplikator * werkzeugEffizienz;
+                    wasserVerbrauch = (3 / (15 * 60)) * seconds * multiplikator * werkzeugEffizienz;
+                    break;
+                case 'stein-abbauen':
+                    energieVerbrauch = (6 / (20 * 60)) * seconds * multiplikator * werkzeugEffizienz;
+                    wasserVerbrauch = (4 / (20 * 60)) * seconds * multiplikator * werkzeugEffizienz;
+                    break;
+                case 'metall-abbauen':
+                    energieVerbrauch = (7 / (30 * 60)) * seconds * multiplikator * werkzeugEffizienz;
+                    wasserVerbrauch = (5 / (30 * 60)) * seconds * multiplikator * werkzeugEffizienz;
+                    break;
+                case 'nahrung-suchen':
+                    energieVerbrauch = (4 / (10 * 60)) * seconds * multiplikator;
+                    wasserVerbrauch = (3 / (10 * 60)) * seconds * multiplikator;
+                    break;
+                case 'wasser-suchen':
+                    energieVerbrauch = (3 / (10 * 60)) * seconds * multiplikator;
+                    wasserVerbrauch = (2 / (10 * 60)) * seconds * multiplikator;
+                    break;
+                case 'getreide-ernten':
+                    energieVerbrauch = (4 / (10 * 60)) * seconds * multiplikator;
+                    wasserVerbrauch = (2 / (10 * 60)) * seconds * multiplikator;
+                    break;
+                case 'brot-backen':
+                    energieVerbrauch = (2 / (15 * 60)) * seconds * multiplikator;
+                    wasserVerbrauch = (1 / (15 * 60)) * seconds * multiplikator;
+                    break;
+                case 'umgebung-erkunden':
+                    energieVerbrauch = (5 / (15 * 60)) * seconds * multiplikator;
+                    wasserVerbrauch = (4 / (15 * 60)) * seconds * multiplikator;
+                    break;
+                default:
+                    return;
+            }
+            gameState.energie = Math.max(gameState.energie - energieVerbrauch, 0);
+            gameState.wasser = Math.max(gameState.wasser - wasserVerbrauch, 0);
+            if (gameState.energie <= 0 || gameState.wasser <= 0) {
+                addMessage('Du hast keine Energie oder Wasser mehr und musst die Aktivität abbrechen.');
+                cancelActivity();
+            }
+            updateStatus();
+        }
+
+        function addMessage(message) {
+            // Push-up Nachricht anzeigen
+            notificationElem.textContent = message;
+            notificationElem.style.display = 'block';
+
+            // Nach 3 Sekunden ausblenden
+            setTimeout(() => {
+                notificationElem.style.display = 'none';
+            }, 3000);
+
+            // Nachricht auch in die Nachrichtenliste hinzufügen
+            const messageElem = document.createElement('p');
+            messageElem.textContent = message;
+            messagesElem.prepend(messageElem);
+        }
+
+        function buildOrUpgradeField() {
+            if (!gameState.inventar.feld) {
+                if (gameState.inventar.holz >= 5) {
+                    gameState.inventar.holz -= 5;
+                    gameState.inventar.feld = 'Stufe 1';
+                    addMessage('Du hast ein Feld der Stufe 1 gebaut.');
+                    updateInventory();
+                } else {
+                    addMessage('Nicht genügend Materialien, um ein Feld zu bauen.');
+                }
+            } else {
+                // Logik zum Upgraden des Feldes
+                if (gameState.inventar.feld === 'Stufe 1') {
+                    if (gameState.inventar.holz >= 10 && gameState.inventar.stein >= 5) {
+                        gameState.inventar.holz -= 10;
+                        gameState.inventar.stein -= 5;
+                        gameState.inventar.feld = 'Stufe 2';
+                        addMessage('Du hast dein Feld auf Stufe 2 verbessert.');
+                        updateInventory();
+                    } else {
+                        addMessage('Nicht genügend Materialien, um das Feld zu verbessern.');
+                    }
+                } else if (gameState.inventar.feld === 'Stufe 2') {
+                    if (gameState.inventar.holz >= 15 && gameState.inventar.stein >= 10 && gameState.inventar.metall >= 5) {
+                        gameState.inventar.holz -= 15;
+                        gameState.inventar.stein -= 10;
+                        gameState.inventar.metall -= 5;
+                        gameState.inventar.feld = 'Stufe 3';
+                        addMessage('Du hast dein Feld auf Stufe 3 verbessert.');
+                        updateInventory();
+                    } else {
+                        addMessage('Nicht genügend Materialien, um das Feld zu verbessern.');
+                    }
+                } else {
+                    addMessage('Dein Feld ist bereits auf maximaler Stufe.');
+                }
+            }
+        }
+
+        function buildOrUpgradePen() {
+            if (!gameState.inventar.gehege) {
+                if (gameState.inventar.holz >= 10 && gameState.inventar.stein >= 5) {
+                    gameState.inventar.holz -= 10;
+                    gameState.inventar.stein -= 5;
+                    gameState.inventar.gehege = 'Stufe 1';
+                    gameState.inventar.tiere += 2;
+                    addMessage('Du hast ein Gehege der Stufe 1 gebaut und 2 Tiere erhalten.');
+                    updateInventory();
+                } else {
+                    addMessage('Nicht genügend Materialien, um ein Gehege zu bauen.');
+                }
+            } else {
+                // Logik zum Upgraden des Geheges
+                if (gameState.inventar.gehege === 'Stufe 1') {
+                    if (gameState.inventar.holz >= 15 && gameState.inventar.stein >= 10) {
+                        gameState.inventar.holz -= 15;
+                        gameState.inventar.stein -= 10;
+                        gameState.inventar.gehege = 'Stufe 2';
+                        gameState.inventar.tiere += 2;
+                        addMessage('Du hast dein Gehege auf Stufe 2 verbessert und 2 Tiere erhalten.');
+                        updateInventory();
+                    } else {
+                        addMessage('Nicht genügend Materialien, um das Gehege zu verbessern.');
+                    }
+                } else if (gameState.inventar.gehege === 'Stufe 2') {
+                    if (gameState.inventar.holz >= 20 && gameState.inventar.stein >= 15 && gameState.inventar.metall >= 5) {
+                        gameState.inventar.holz -= 20;
+                        gameState.inventar.stein -= 15;
+                        gameState.inventar.metall -= 5;
+                        gameState.inventar.gehege = 'Stufe 3';
+                        gameState.inventar.tiere += 3;
+                        addMessage('Du hast dein Gehege auf Stufe 3 verbessert und 3 Tiere erhalten.');
+                        updateInventory();
+                    } else {
+                        addMessage('Nicht genügend Materialien, um das Gehege zu verbessern.');
+                    }
+                } else {
+                    addMessage('Dein Gehege ist bereits auf maximaler Stufe.');
+                }
+            }
+        }
+
+        function manageAnimals() {
+            if (gameState.inventar.gehege) {
+                // Optionen: Tiere füttern oder schlachten
+                let decision = confirm('Möchtest du deine Tiere füttern? (OK für Ja, Abbrechen für Nein)');
+                if (decision) {
+                    if (gameState.inventar.getreide >= gameState.inventar.tiere) {
+                        gameState.inventar.getreide -= gameState.inventar.tiere;
+                        gameState.inventar.tiere += 1; // Tiere vermehren sich
+                        addMessage('Du hast deine Tiere gefüttert und sie haben sich vermehrt.');
+                        updateInventory();
+                    } else {
+                        addMessage('Nicht genügend Getreide zum Füttern der Tiere.');
+                    }
+                } else {
+                    decision = confirm('Möchtest du ein Tier schlachten? (OK für Ja, Abbrechen für Nein)');
+                    if (decision) {
+                        if (gameState.inventar.tiere > 0) {
+                            gameState.inventar.tiere -= 1;
+                            gameState.inventar.fleisch += 1;
+                            addMessage('Du hast ein Tier geschlachtet und Fleisch erhalten.');
+                            updateInventory();
+                        } else {
+                            addMessage('Du hast keine Tiere mehr.');
+                        }
+                    }
+                }
+            } else {
+                addMessage('Du hast kein Gehege.');
+            }
+        }
+
+        function buildOrUpgradeShelter() {
+    if (!gameState.unterkunft) {
+        if (gameState.inventar.holz >= 5) {
+            gameState.inventar.holz -= 5;
+            gameState.unterkunft = 'Stufe 1';
+            addMessage('Du hast eine Unterkunft der Stufe 1 gebaut.');
+            updateInventory();
+            updateStatus();
+        } else {
+            addMessage('Nicht genügend Materialien, um eine Unterkunft zu bauen.');
+        }
+    } else {
+        if (gameState.unterkunft === 'Stufe 1') {
+            if (gameState.inventar.holz >= 10 && gameState.inventar.stein >= 5) {
+                gameState.inventar.holz -= 10;
+                gameState.inventar.stein -= 5;
+                gameState.unterkunft = 'Stufe 2';
+                addMessage('Du hast deine Unterkunft auf Stufe 2 verbessert.');
+                updateInventory();
+                updateStatus();
+            } else {
+                addMessage('Nicht genügend Materialien, um die Unterkunft zu verbessern.');
+            }
+        } else if (gameState.unterkunft === 'Stufe 2') {
+            if (gameState.inventar.holz >= 15 && gameState.inventar.stein >= 10 && gameState.inventar.metall >= 5) {
+                gameState.inventar.holz -= 15;
+                gameState.inventar.stein -= 10;
+                gameState.inventar.metall -= 5;
+                gameState.unterkunft = 'Stufe 3';
+                addMessage('Du hast deine Unterkunft auf Stufe 3 verbessert.');
+                updateInventory();
+                updateStatus();
+            } else {
+                addMessage('Nicht genügend Materialien, um die Unterkunft zu verbessern.');
+            }
+        } else {
+            addMessage('Deine Unterkunft ist bereits auf maximaler Stufe.');
+        }
+    }
+}
+
+function explore() {
+    const erkundungsdauer = 15 * Math.pow(1.1, gameState.erkundungen);
+    if (gameState.uhrzeit + erkundungsdauer / 3600 > 21) {
+        addMessage('Die Erkundung würde zu lange dauern. Es ist bald Schlafenszeit.');
+        return;
+    }
+    startActivity('Umgebung erkunden', erkundungsdauer * 60, 'umgebung-erkunden');
+    gameState.erkundungen += 1;
+}
+
+function handleExploration(progressFraction) {
+    const ereignisse = ['tier', 'nichts', 'gefahr', 'fund', 'handel'];
+    const gewichte = [10, 55, 15, 20, 5]; // 'helfer' entfernt, 'handel' hinzugefügt
+    const totalGewicht = gewichte.reduce((a, b) => a + b);
+    const randomNum = Math.random() * totalGewicht;
+    let sum = 0;
+    let ereignis = 'nichts';
+    for (let i = 0; i < ereignisse.length; i++) {
+        sum += gewichte[i];
+        if (randomNum <= sum) {
+            ereignis = ereignisse[i];
+            break;
+        }
+    }
+
+    switch(ereignis) {
+        case 'tier':
+            addMessage('Du triffst auf ein wildes Tier!');
+            handleEncounter();
+            break;
+        case 'nichts':
+            addMessage('Du findest nichts Besonderes.');
+            break;
+        case 'gefahr':
+            const schaden = Math.floor(Math.random() * 15) + 5;
+            gameState.gesundheit = Math.max(gameState.gesundheit - schaden, 0);
+            addMessage(`Du gerätst in eine Gefahr und verlierst ${schaden} Gesundheit.`);
+            updateStatus();
+            break;
+        case 'fund':
+            const materialien = ['holz', 'stein', 'metall'];
+            const gefundenesMaterial = materialien[Math.floor(Math.random() * materialien.length)];
+            const menge = Math.floor(Math.random() * 5) + 1;
+            gameState.inventar[gefundenesMaterial] += menge;
+            addMessage(`Du findest ${menge} Einheit(en) ${gefundenesMaterial}!`);
+            updateInventory();
+            break;
+        case 'handel':
+            initiateTrade();
+            break;
+        default:
+            addMessage('Nichts Besonderes passiert.');
+    }
+}
+
+function handleEncounter() {
+    const decision = confirm('Möchtest du kämpfen? (OK für Ja, Abbrechen für Flucht)');
+    if (decision) {
+        let erfolgschance = 0.5;
+        // Gefährtenbonus entfernt
+        if (Math.random() < erfolgschance) {
+            const energieGewonnen = Math.floor(Math.random() * 20) + 20;
+            gameState.energie = Math.min(gameState.energie + energieGewonnen, 100);
+            addMessage(`Du besiegst das Tier und gewinnst ${energieGewonnen} Energie.`);
+            updateStatus();
+        } else {
+            const schaden = Math.floor(Math.random() * 15) + 15;
+            gameState.gesundheit = Math.max(gameState.gesundheit - schaden, 0);
+            addMessage(`Das Tier verletzt dich. Du verlierst ${schaden} Gesundheit.`);
+            updateStatus();
+        }
+    } else {
+        const verlust = Math.floor(Math.random() * 10) + 5;
+        gameState.energie = Math.max(gameState.energie - verlust, 0);
+        addMessage(`Du fliehst, verlierst aber ${verlust} Energie.`);
+        updateStatus();
+    }
+}
+
+function initiateTrade() {
+    addMessage('Du triffst auf einen anderen Überlebenden, der handeln möchte.');
+
+    // Beispielhafte Handelsoptionen
+    let angebot = [
+        { item: 'Holz', menge: 5, verlangt: 'Stein', verlangtMenge: 3 },
+        { item: 'Brot', menge: 2, verlangt: 'Getreide', verlangtMenge: 5 },
+        { item: 'Metall', menge: 2, verlangt: 'Holz', verlangtMenge: 10 }
+    ];
+
+    // Zufälliges Angebot auswählen
+    let handel = angebot[Math.floor(Math.random() * angebot.length)];
+
+    let entscheidung = confirm(`Der Überlebende bietet dir ${handel.menge} ${handel.item} für ${handel.verlangtMenge} ${handel.verlangt}. Möchtest du handeln?`);
+
+    if (entscheidung) {
+        if (gameState.inventar[handel.verlangt.toLowerCase()] >= handel.verlangtMenge) {
+            gameState.inventar[handel.verlangt.toLowerCase()] -= handel.verlangtMenge;
+            gameState.inventar[handel.item.toLowerCase()] += handel.menge;
+            addMessage(`Du hast ${handel.verlangtMenge} ${handel.verlangt} gegen ${handel.menge} ${handel.item} getauscht.`);
+            updateInventory();
+        } else {
+            addMessage(`Du hast nicht genügend ${handel.verlangt} zum Handeln.`);
+        }
+    } else {
+        addMessage('Du lehnst das Handelsangebot ab.');
+    }
+}
+
+function takeNap() {
+    if (gameState.aktivitaet) {
+        addMessage('Du kannst während einer Aktivität kein Nickerchen machen.');
+        return;
+    }
+    gameState.energie = Math.min(gameState.energie + 5, 100);
+    advanceTime(0.5); // 30 Minuten
+    addMessage('Du machst ein kurzes Nickerchen und fühlst dich etwas erholter.');
+    updateStatus();
+}
+
+function showBlueprints() {
+    addMessage('--- Baupläne ---');
+    addMessage('Werkzeuge:');
+    addMessage('1) Einfaches Werkzeug (2 Holz, 1 Stein)');
+    addMessage('2) Fortgeschrittenes Werkzeug (3 Holz, 2 Stein, 1 Metall)');
+    addMessage('3) Hochwertiges Werkzeug (5 Holz, 3 Stein, 3 Metall)');
+    addMessage('Unterkünfte:');
+    addMessage('1) Stufe 1 (5 Holz)');
+    addMessage('2) Stufe 2 (10 Holz, 5 Stein)');
+    addMessage('3) Stufe 3 (15 Holz, 10 Stein, 5 Metall)');
+    addMessage('Felder:');
+    addMessage('1) Stufe 1 (5 Holz)');
+    addMessage('2) Stufe 2 (10 Holz, 5 Stein)');
+    addMessage('3) Stufe 3 (15 Holz, 10 Stein, 5 Metall)');
+    addMessage('Gehege:');
+    addMessage('1) Stufe 1 (10 Holz, 5 Stein)');
+    addMessage('2) Stufe 2 (15 Holz, 10 Stein)');
+    addMessage('3) Stufe 3 (20 Holz, 15 Stein, 5 Metall)');
+}
+
+function showOptions() {
+    let auswahl = prompt('Optionen:\n1) Spiel speichern\n2) Spiel laden\nGib die Zahl ein oder drücke Abbrechen.');
+
+    switch (auswahl) {
+        case '1':
+            saveGame();
+            break;
+        case '2':
+            loadGame();
+            break;
+        default:
+            addMessage('Optionen abgebrochen.');
+            return;
+    }
+}
+
+function saveGame() {
+    localStorage.setItem('survivalGameState', JSON.stringify(gameState));
+    addMessage('Spiel gespeichert.');
+}
+
+function loadGame() {
+    const savedState = JSON.parse(localStorage.getItem('survivalGameState'));
+    if (savedState) {
+        gameState = savedState;
+        updateStatus();
+        updateInventory();
+        addMessage('Spiel geladen.');
+    } else {
+        addMessage('Kein gespeicherter Spielstand gefunden.');
+    }
+}
+
+function advanceTime(hours) {
+    gameState.uhrzeit += hours;
+    if (gameState.uhrzeit >= 24) {
+        gameState.uhrzeit -= 24;
+        gameState.tag += 1;
+    }
+    updateStatus();
+    checkEndConditions();
+}
+
+function checkTime() {
+    if (!gameState.aktivitaet && gameState.uhrzeit >= 21) {
+        sleep();
+    }
+}
+
+function sleep() {
+    addMessage('Du gehst schlafen...');
+
+    // Berechne die Schlafdauer bis 6 Uhr morgens
+    let schlafdauer = 6 - gameState.uhrzeit;
+    if (schlafdauer <= 0) {
+        schlafdauer += 24;
+    }
+
+    advanceTime(schlafdauer);
+
+    // Wiederherstellung basierend auf der Unterkunftsstufe
+    let gesundheitWiederherstellung = 10;
+    let energieWiederherstellung = 20;
+
+    switch (gameState.unterkunft) {
+        case 'Stufe 1':
+            gesundheitWiederherstellung += 5;
+            energieWiederherstellung += 5;
+            break;
+        case 'Stufe 2':
+            gesundheitWiederherstellung += 10;
+            energieWiederherstellung += 10;
+            break;
+        case 'Stufe 3':
+            gesundheitWiederherstellung += 15;
+            energieWiederherstellung += 15;
+            break;
+    }
+
+    gameState.gesundheit = Math.min(gameState.gesundheit + gesundheitWiederherstellung, 100);
+    gameState.energie = Math.min(gameState.energie + energieWiederherstellung, 100);
+    gameState.wasser = Math.max(gameState.wasser - 10, 0); // Wasserverbrauch während des Schlafens
+
+    addMessage('Du hast geschlafen und fühlst dich erholt.');
+    updateStatus();
+
+    // Überprüfe, ob das Spiel endet
+    checkEndConditions();
+}
+
+// Funktion zur Überprüfung der Endbedingungen
+function checkEndConditions() {
+    if (gameState.gesundheit <= 0) {
+        addMessage('Deine Gesundheit ist auf 0 gesunken. Du hast nicht überlebt.');
+        gameOver();
+    } else if (gameState.energie <= 0) {
+        addMessage('Deine Energie ist auf 0 gesunken. Du kannst nicht weitermachen.');
+        gameOver();
+    } else if (gameState.wasser <= 0) {
+        addMessage('Du hast kein Wasser mehr. Du bist verdurstet.');
+        gameOver();
+    }
+}
+
+// Funktion zum Beenden des Spiels
+function gameOver() {
+    addMessage('Spiel vorbei! Du hast ' + gameState.tag + ' Tage überlebt.');
+
+    // Deaktiviere alle Aktionsbuttons
+    actionButtons.forEach(button => {
+        button.disabled = true;
+    });
+
+    // Deaktiviere den Abbruch-Button
+    cancelActivityButton.disabled = true;
+
+    // Biete die Möglichkeit zum Neustart
+    const restartButton = document.createElement('button');
+    restartButton.textContent = 'Neustart';
+    restartButton.addEventListener('click', () => {
+        location.reload();
+    });
+    messagesElem.prepend(restartButton);
+}
+
+// Funktion zum Herstellen von Werkzeugen
+function craftTool() {
+    if (gameState.inventar.werkzeug) {
+        addMessage('Du hast bereits ein Werkzeug.');
+        return;
+    }
+
+    // Anzeigen der verfügbaren Werkzeuge
+    let auswahl = prompt('Welches Werkzeug möchtest du herstellen?\n1) Einfaches Werkzeug (2 Holz, 1 Stein)\n2) Fortgeschrittenes Werkzeug (3 Holz, 2 Stein, 1 Metall)\n3) Hochwertiges Werkzeug (5 Holz, 3 Stein, 3 Metall)\nGib die Zahl ein oder drücke Abbrechen.');
+
+    switch (auswahl) {
+        case '1':
+            if (gameState.inventar.holz >= 2 && gameState.inventar.stein >= 1) {
+                gameState.inventar.holz -= 2;
+                gameState.inventar.stein -= 1;
+                gameState.inventar.werkzeug = 'Einfaches Werkzeug';
+                addMessage('Du hast ein Einfaches Werkzeug hergestellt.');
+            } else {
+                addMessage('Nicht genügend Materialien.');
+            }
+            break;
+        case '2':
+            if (gameState.inventar.holz >= 3 && gameState.inventar.stein >= 2 && gameState.inventar.metall >= 1) {
+                gameState.inventar.holz -= 3;
+                gameState.inventar.stein -= 2;
+                gameState.inventar.metall -= 1;
+                gameState.inventar.werkzeug = 'Fortgeschrittenes Werkzeug';
+                addMessage('Du hast ein Fortgeschrittenes Werkzeug hergestellt.');
+            } else {
+                addMessage('Nicht genügend Materialien.');
+            }
+            break;
+        case '3':
+            if (gameState.inventar.holz >= 5 && gameState.inventar.stein >= 3 && gameState.inventar.metall >= 3) {
+                gameState.inventar.holz -= 5;
+                gameState.inventar.stein -= 3;
+                gameState.inventar.metall -= 3;
+                gameState.inventar.werkzeug = 'Hochwertiges Werkzeug';
+                addMessage('Du hast ein Hochwertiges Werkzeug hergestellt.');
+            } else {
+                addMessage('Nicht genügend Materialien.');
+            }
+            break;
+        default:
+            addMessage('Herstellung abgebrochen.');
+            return;
+    }
+
+    updateInventory();
+}
+
+// Funktion zum Essen von Nahrung
+function eatFood() {
+    let auswahl = prompt('Was möchtest du essen?\n1) Brot\n2) Fleisch\nGib die Zahl ein oder drücke Abbrechen.');
+
+    switch (auswahl) {
+        case '1':
+            if (gameState.inventar.brot > 0) {
+                gameState.inventar.brot -= 1;
+                gameState.energie = Math.min(gameState.energie + 20, 100);
+                addMessage('Du isst Brot und fühlst dich energiegeladen.');
+            } else {
+                addMessage('Du hast kein Brot.');
+            }
+            break;
+        case '2':
+            if (gameState.inventar.fleisch > 0) {
+                gameState.inventar.fleisch -= 1;
+                gameState.gesundheit = Math.min(gameState.gesundheit + 15, 100);
+                addMessage('Du isst Fleisch und fühlst dich gestärkt.');
+            } else {
+                addMessage('Du hast kein Fleisch.');
+            }
+            break;
+        default:
+            addMessage('Essen abgebrochen.');
+            return;
+    }
+
+    updateInventory();
+    updateStatus();
+}
+
+// Initialisierung beim Laden der Seite
+window.onload = initializeGame;
